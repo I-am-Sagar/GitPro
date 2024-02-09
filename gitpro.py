@@ -56,8 +56,24 @@ def git_diff(m, n):
         m_commit_hash = subprocess.check_output(['git', 'log', '--pretty=format:%H']).splitlines()[-m].decode('utf-8')
         n_commit_hash = subprocess.check_output(['git', 'log', '--pretty=format:%H']).splitlines()[-n].decode('utf-8')
 
+        # Get the folder structure of the mth commit
+        print(f"Folder structure of the #{m} commit:")
+        subprocess.run(['git', 'checkout', m_commit_hash], stdout=subprocess.PIPE)
+        subprocess.run(['tree'], stdout=sys.stdout)
+
+        # Get the folder structure of the nth commit
+        print(f"\nFolder structure of the #{n} commit:")
+        subprocess.run(['git', 'checkout', n_commit_hash], stdout=subprocess.PIPE)
+        subprocess.run(['tree'], stdout=sys.stdout)
+
+        # Highlight the differences between the folder structures
+        print("\nChanges in folder structure:")
+        subprocess.run(['git', 'diff', '--name-only', m_commit_hash, n_commit_hash], stdout=sys.stdout)
+
         # Show differences between the mth and nth commits
-        subprocess.run(['git', 'diff', m_commit_hash, n_commit_hash])
+        print(f"\nDifferences between the #{m} and #{n} commits:")
+        subprocess.run(['git', 'diff', m_commit_hash, n_commit_hash], stdout=sys.stdout)
+
     except IndexError:
         print("Commit not found.")
         sys.exit(1)
@@ -79,17 +95,11 @@ def main():
     elif option == 'list':
         list_commits()
     elif option == 'diff':
-        if len(sys.argv) == 2:
-            git_diff(1, 2)  # Default to differences between the current commit and the next commit
-        elif len(sys.argv) == 4:
-            try:
-                m = int(sys.argv[2])
-                n = int(sys.argv[3])
-                git_diff(m, n)
-            except ValueError:
-                print("Invalid arguments. Please provide integers for m and n.")
-                sys.exit(1)
-        else:
+        try:
+            m = int(sys.argv[2])
+            n = int(sys.argv[3])
+            git_diff(m, n)
+        except ValueError:
             print("Invalid number of arguments. Usage: gitpro diff [<m:int> [<n:int>]]")
             sys.exit(1)
     else:
