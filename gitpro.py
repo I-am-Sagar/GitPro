@@ -33,10 +33,16 @@ def gitpro(n):
 
 def gitpro_reset():
     try:
-        # Checkout to the master branch
-        subprocess.run(['git', 'checkout', 'master'])
+        # Check if there are any local changes
+        status_output = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
+        if status_output.stdout.strip():
+            # There are local changes, discard them
+            subprocess.run(['git', 'reset', '--hard'])
+        
+        # Checkout to the main branch
+        subprocess.run(['git', 'checkout', 'main'])
     except subprocess.CalledProcessError:
-        print("Failed to checkout to master branch.")
+        print("Failed to checkout to main branch.")
         sys.exit(1)
 
 def list_commits():
