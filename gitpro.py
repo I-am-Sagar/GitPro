@@ -54,10 +54,6 @@ def read_exclude_patterns_from_gitignore():
                     # Strip '/' from the start and end of the pattern
                     line = line.strip('/')
                     exclude_patterns.append(line)
-
-    # Add .git folder to exclude patterns as well
-    exclude_patterns.append(".git")
-    
     return exclude_patterns
 
 
@@ -218,13 +214,19 @@ def count_lines_of_code(directory, exclude_patterns):
     for root, dirs, files in os.walk(directory):
         # Exclude directories matching the patterns in exclude_patterns
         dirs[:] = [d for d in dirs if not any(fnmatch.fnmatch(d, pattern) for pattern in exclude_patterns)]
+        # Ignore hidden folders starting with a '.'
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
 
         for file in files:
             file_path = os.path.join(root, file)
             # Exclude files matching the patterns in exclude_patterns
             if not any(fnmatch.fnmatch(file, pattern) for pattern in exclude_patterns):
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    lines_by_file[file_path] = sum(1 for line in f if line.strip())
+                if file.endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.mp4', '.mov', '.avi', '.mkv', '.ico')):
+                    # For non-code files, represent as 1 line
+                    lines_by_file[file_path] = 1
+                else:
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        lines_by_file[file_path] = sum(1 for line in f if line.strip())
     return lines_by_file
 
 # -------------------- MAIN DRIVER CODE --------------------------------------------
