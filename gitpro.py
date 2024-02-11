@@ -10,17 +10,25 @@ MAIN_BRANCH_NAME = "main"
 
 def is_detached_head():
     """
-    Checks if the repository is in detached HEAD state.
+    Checks if the repository is in a detached HEAD state.
 
     Returns:
         (bool): True if in detached HEAD state, False otherwise.
         (str or None): Name of the branch if not detached, None if detached.
+
+    Explanation:
+    The `subprocess` module is used to spawn new processes, connect to their input/output/error pipes,
+    and obtain their return codes. Here, we're using it to execute a shell command (`git symbolic-ref --short HEAD`)
+    to determine whether the repository is in a detached HEAD state or not. This is important because the behavior
+    of certain Git commands may vary depending on whether the repository is in a detached HEAD state or not.
     """
     try:
         # Check if HEAD points to a branch or a commit hash
         branch_name = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).strip().decode('utf-8')
+        # If the command succeeds, repository is not in detached HEAD state
         return False, branch_name
     except subprocess.CalledProcessError:
+        # If the command fails, repository is in detached HEAD state
         return True, None
 
 
@@ -30,6 +38,13 @@ def get_commits():
 
     Returns:
         (list): List of commits in short format.
+
+    Explanation:
+    This function retrieves the commit log from the Git repository. 
+    It uses the `subprocess` module to execute the `git log --oneline` command, 
+    which lists the commit history in a short format. 
+    The output of the command is captured and split into individual commits, 
+    which are then returned as a list.
     """
     # Get the commit log using git log command
     git_log = subprocess.run(["git", "log", "--oneline"], capture_output=True, text=True)
@@ -43,6 +58,15 @@ def read_exclude_patterns_from_gitignore():
 
     Returns:
         (list): List of patterns to be excluded.
+
+    Explanation:
+    The function reads exclude patterns from the .gitignore file, which is used by Git
+    to determine which files and directories to ignore when staging changes. We parse
+    the .gitignore file line by line, stripping leading and trailing whitespace from
+    each line. If the line is not empty and does not start with a '#' (indicating a
+    comment), we strip any leading and trailing '/' characters from the pattern and
+    add it to the list of exclude patterns. Finally, the list of exclude patterns
+    is returned.
     """
     exclude_patterns = []
     gitignore_path = os.path.join(os.getcwd(), ".gitignore")
@@ -63,17 +87,36 @@ def print_lines_by_file(lines_by_file):
 
     Args:
         lines_by_file (dict): Dictionary containing file paths and their respective lines of code.
+
+    Explanation:
+    This function prints the lines of code in each file in a hierarchical tree folder structure.
+    It takes a dictionary as input, where keys are file paths and values are the respective
+    numbers of lines in each file. The function iterates through each item in the dictionary,
+    extracts the directory path and filename, and constructs the current path. If the current path
+    is different from the previous path, it prints the current path to indicate the directory
+    change. Then, it calculates the indentation level based on the number of directories and
+    prints the filename along with the number of lines. Finally, it calculates and prints the
+    total lines of code in all files.
     """
+    prev_path = None  # Variable to store the previous path
+    
     for file_path, lines in lines_by_file.items():
         # Split the file path into individual directories and filename
         directories, filename = os.path.split(file_path)
-        # Construct indentation string with blue color for directories
-        indent_string = '\033[94m' + os.path.join(*directories.split(os.sep)) + os.sep + '\033[0m'
+        # Construct the path string
+        current_path = os.path.join(*directories.split(os.sep))
+        
+        # If the current path is different from the previous path, print the current path
+        if current_path != prev_path:
+            # Current path is printed in blue color on terminal
+            print('\033[94m' + current_path + os.sep + '\033[0m')
+            prev_path = current_path
+        
         # Calculate indentation based on the number of directories
         indentation = len(directories.split(os.sep))
         # Adjust indentation for the filename
-        indent_string += "  " * (indentation - 1)
-        # Print the file path and number of lines with appropriate indentation
+        indent_string = "  " * (indentation - 1)
+        # Print the file name and number of lines with appropriate indentation
         print(f"{indent_string}└── {filename} ({lines} lines)")
 
     # Print total lines of code
@@ -89,6 +132,10 @@ def gitpro(n):
 
     Args:
         n (int): Number indicating the nth commit.
+
+    Explanation:
+    Here, we're using it to execute Git commands (`git symbolic-ref --short HEAD` and `git log --pretty=format:%H`) 
+    to determine the current state of the repository and to checkout to a specific commit respectively.
     """
     try:
         # Check if currently in a detached HEAD state
@@ -113,7 +160,12 @@ def gitpro(n):
 
 def gitpro_reset():
     """
-    Resets the repository to the main branch and discards local changes.
+    Resets the repository to the main branch and discards any local changes if made.
+
+    Explanation:
+    It first checks if there are any local changes by running the 'git status --porcelain' command 
+    using the subprocess module. If there are changes, it discards them by running 'git reset --hard'. 
+    Then, it checks out to the main branch using 'git checkout' command.
     """
     try:
         # Check if there are any local changes
@@ -132,6 +184,12 @@ def gitpro_reset():
 def list_commits():
     """
     Lists all commits in the repository.
+
+    Explanation:
+    In this function, we use `subprocess.check_output()` to execute a shell command (`git log --pretty=format:%H %s`) 
+    to retrieve information about all commits in the repository. The `--pretty=format:%H %s` option formats each commit 
+    as a single line containing the commit hash (%H) followed by the commit message (%s). We then split the output 
+    into individual lines and print each commit with its index using a for loop.
     """
     try:
         # Get commit hashes and messages
@@ -151,6 +209,12 @@ def git_diff(m, n):
     Args:
         m (int): Number indicating the mth commit from the initial commit.
         n (int): Number indicating the nth commit from the initial commit.
+
+    Explanation:
+    The `git_diff` function takes two integers `m` and `n` representing the mth and nth commits from the initial commit.
+    It then retrieves the commit hashes for these commits using the `git log` command.
+    After obtaining the commit hashes, it uses `git diff` to show the differences between the folder structures and
+    the differences between the specified commits.
     """
     try:
         # Get the mth and nth commit hashes from the start
@@ -179,6 +243,14 @@ def search_commit_message(search_key):
 
     Args:
         search_key (str): String to search for in commit messages.
+
+    Explanation:
+    The `search_commit_message` function searches for a specific string (search_key)
+    in the commit messages of the repository. It first checks if the repository
+    is in a detached HEAD state. If it is, it checks out to the master branch
+    to perform the search. Then, it retrieves the list of commits and iterates
+    through each commit, checking if the search key is present in the commit message.
+    If found, it prints the commit number from initial commit, commit hash and message.
     """
     # If in detached head-state, checkout to master first
     detached, branch_name = is_detached_head()
@@ -209,6 +281,20 @@ def count_lines_of_code(directory, exclude_patterns):
 
     Returns:
         (dict): Dictionary containing file paths and their respective lines of code.
+
+    Explanation:
+    This function traverses through the directory specified by `directory` argument
+    and counts the lines of code in each file excluding the ones specified in `exclude_patterns`.
+
+    The `os.walk()` function generates the file names in a directory tree by walking either
+    top-down or bottom-up. In each iteration, it yields a tuple containing the directory path,
+    a list of directories in that path, and a list of files in that path.
+
+    For each file encountered, it checks if the file matches any of the exclusion patterns
+    specified in `exclude_patterns`. If not, it opens the file and counts the lines of code.
+    If the file has extensions associated with non-code files, such as images or videos,
+    it represents them as 1 line of code. The lines of code for each file are stored in a dictionary
+    where the keys are file paths and the values are the respective line counts.
     """
     lines_by_file = {}
     for root, dirs, files in os.walk(directory):
