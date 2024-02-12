@@ -3,6 +3,9 @@ import subprocess
 import sys
 import os
 import fnmatch
+from collections import defaultdict
+from datetime import datetime
+import re
 
 MAIN_BRANCH_NAME = "main"
 
@@ -183,20 +186,39 @@ def gitpro_reset():
 
 def list_commits():
     """
-    Lists all commits in the repository.
+    Lists all commits in the repository datewise.
 
     Explanation:
     In this function, we use `subprocess.check_output()` to execute a shell command (`git log --pretty=format:%H %s`) 
     to retrieve information about all commits in the repository. The `--pretty=format:%H %s` option formats each commit 
-    as a single line containing the commit hash (%H) followed by the commit message (%s). We then split the output 
-    into individual lines and print each commit with its index using a for loop.
+    as a single line containing the commit hash (%H) followed by the commit message (%s). 
     """
     try:
         # Get commit hashes and messages
-        commit_info = subprocess.check_output(['git', 'log', '--pretty=format:%H %s']).decode('utf-8')
+        commit_info = subprocess.check_output(['git', 'log', '--pretty=format:%H %ad']).decode('utf-8')
         commit_list = commit_info.splitlines()
-        for i, commit in enumerate(commit_list, 1):
-            print(f"{i}. {commit}")
+
+        # Dictionary to store commits per date
+        commits_per_date = defaultdict(list)
+
+        # Parse commit dates and organize commits per date
+        for commit in commit_list:
+            commit_hash, commit_date = commit.split(maxsplit=1)
+            commit_date = re.match(r'(\w+ \w+ \d+ \d+:\d+:\d+ \d+)', commit_date).group(1)
+            commit_date = datetime.strptime(commit_date, '%a %b %d %H:%M:%S %Y')
+            commits_per_date[commit_date.strftime('%Y-%m-%d')].append((commit_hash, commit_date))
+
+        # Print commits date-wise
+        for date, commits in sorted(commits_per_date.items()):
+            day_of_week = datetime.strptime(date, '%Y-%m-%d').strftime('%A')
+            print(f"{date} {day_of_week} - {len(commits)}")
+            commit_number = 1
+            for commit_hash, commit_date in commits:
+                # Get commit message
+                commit_message = subprocess.check_output(['git', 'log', '-1', '--pretty=%s', commit_hash]).strip().decode('utf-8')
+                # Print commit number, short commit hash (in blue color), and commit message
+                print(f"{commit_number}. \033[34m{commit_hash[:7]}\033[0m {commit_message}")
+                commit_number += 1
     except subprocess.CalledProcessError:
         print("Failed to retrieve commit information.")
         sys.exit(1)
@@ -263,12 +285,13 @@ def search_commit_message(search_key):
         print(f"Currently on branch: {branch_name}")    
 
     commits = get_commits()
+    total_commits = len(commits)
     for i, commit in enumerate(commits):
         commit_parts = commit.split(' ', 1)
         commit_hash = commit_parts[0]
         commit_message = commit_parts[1]
         if search_key.lower() in commit_message.lower():
-            print(f"{i+1} {commit_hash} \"{commit_message}\"")
+            print(f"{total_commits - i} {commit_hash} \"{commit_message}\"")
 
 
 def count_lines_of_code(directory, exclude_patterns):
